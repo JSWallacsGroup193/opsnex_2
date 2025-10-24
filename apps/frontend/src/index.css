@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* OpsNex dark theme with teal accent (#14b8a6) and slate backgrounds */
+    --background: 222.2 84% 4.9%; /* #0f172a - slate-950 */
+    --foreground: 210 40% 90%; /* #e2e8f0 - slate-200 */
+
+    --card: 222.2 47.4% 11.2%; /* #1e293b - slate-800 */
+    --card-foreground: 210 40% 90%; /* #e2e8f0 */
+
+    --popover: 222.2 47.4% 11.2%; /* #1e293b - slate-800 */
+    --popover-foreground: 210 40% 90%; /* #e2e8f0 */
+
+    --primary: 172.9 66% 50.4%; /* #14b8a6 - teal-500 */
+    --primary-foreground: 0 0% 100%; /* white */
+
+    --secondary: 217.2 32.6% 17.5%; /* #334155 - slate-700 */
+    --secondary-foreground: 172.9 66% 50.4%; /* #14b8a6 teal-500 */
+
+    --muted: 215.4 16.3% 38%; /* #475569 - slate-600 */
+    --muted-foreground: 217.9 10.6% 64.9%; /* #94a3b8 - slate-400 */
+
+    --accent: 172.9 66% 50.4%; /* #14b8a6 - teal-500 */
+    --accent-foreground: 0 0% 100%; /* white */
+
+    --destructive: 0 84.2% 60.2%; /* #ef4444 - red-500 */
+    --destructive-foreground: 0 0% 100%; /* white */
+
+    --border: 217.2 32.6% 17.5%; /* #334155 - slate-700 */
+    --input: 217.2 32.6% 17.5%; /* #334155 - slate-700 */
+    --ring: 172.9 66% 50.4%; /* #14b8a6 - teal-500 */
+
+    --chart-1: 172.9 66% 50.4%; /* #14b8a6 - teal-500 */
+    --chart-2: 160 84% 39%; /* #10b981 - emerald-500 */
+    --chart-3: 38 92% 50%; /* #f59e0b - amber-500 */
+    --chart-4: 0 84.2% 60.2%; /* #ef4444 - red-500 */
+    --chart-5: 258 90% 66%; /* #8b5cf6 - violet-500 */
+
+    --radius: 0.5rem;
+
+    /* Sidebar colors for app shell */
+    --sidebar: 222.2 47.4% 11.2%; /* #1e293b - slate-800 */
+    --sidebar-foreground: 210 40% 90%; /* #e2e8f0 - slate-200 */
+    --sidebar-primary: 172.9 66% 50.4%; /* #14b8a6 - teal-500 */
+    --sidebar-primary-foreground: 0 0% 100%; /* white */
+    --sidebar-accent: 217.2 32.6% 17.5%; /* #334155 - slate-700 */
+    --sidebar-accent-foreground: 210 40% 90%; /* #e2e8f0 - slate-200 */
+    --sidebar-border: 217.2 32.6% 17.5%; /* #334155 - slate-700 */
+    --sidebar-ring: 172.9 66% 50.4%; /* #14b8a6 - teal-500 */
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 90%;
+    --card: 222.2 47.4% 11.2%;
+    --card-foreground: 210 40% 90%;
+    --popover: 222.2 47.4% 11.2%;
+    --popover-foreground: 210 40% 90%;
+    --primary: 172.9 66% 50.4%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 172.9 66% 50.4%;
+    --muted: 215.4 16.3% 38%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 172.9 66% 50.4%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 172.9 66% 50.4%;
+    --chart-1: 172.9 66% 50.4%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 84.2% 60.2%;
+    --chart-5: 258 90% 66%;
+    --sidebar: 222.2 47.4% 11.2%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 172.9 66% 50.4%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 172.9 66% 50.4%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+}

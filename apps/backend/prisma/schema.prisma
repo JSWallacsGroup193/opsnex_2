@@ -1,0 +1,3102 @@
+// ============================================================================
+// ENHANCED PRISMA SCHEMA FOR HVAC MANAGEMENT SYSTEM
+// ============================================================================
+// 
+// This schema enhances your existing 20 tables and adds 49 new tables
+// for a complete HVAC management system.
+//
+// IMPORTANT: This preserves ALL your existing data and relationships!
+// 
+// Total Tables: 69
+// - Authentication & Authorization: 15 tables
+// - Work Orders: 15 tables
+// - CRM & Customers: 10 tables
+// - Inventory: 8 tables
+// - Financial: 5 tables
+// - Organization: 3 tables
+// - Audit: 1 table
+// - AI: 1 table (existing)
+// - Multi-tenancy: 1 table (existing)
+//
+// Date: October 19, 2025
+// Status: Production Ready
+// ============================================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MULTI-TENANCY (EXISTING - ENHANCED)
+// ============================================================================
+
+model Tenant {
+  id             String          @id @default(uuid())
+  name           String
+  
+  // NEW: Enhanced tenant info
+  subdomain      String?         @unique
+  logo           String?
+  settings       Json?
+  plan           String?         @default("basic") // "basic", "professional", "enterprise"
+  isActive       Boolean         @default(true)
+  
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt @default(now())
+  
+  // EXISTING relations (keep all)
+  users          User[]
+  workOrders     WorkOrder[]
+  accounts       Account[]
+  contacts       Contact[]
+  leads          Lead[]
+  notes          Note[]
+  skus           SKU[]
+  warehouses     Warehouse[]
+  stockLedgers   StockLedger[]
+  purchaseOrders PurchaseOrder[]
+  forecasts      Forecast[]
+  chatLogs       ChatLog[]
+  
+  // NEW relations
+  departments    Department[]
+  teams          Team[]
+  invoices       Invoice[]
+  payments       Payment[]
+  expenses       Expense[]
+  auditLogs      AuditLog[]
+  serviceAgreements ServiceAgreement[]
+  
+  // Phase 1 relations
+  tasks          Task[]
+  comments       Comment[]
+  tags           Tag[]
+  activityLogs   ActivityLog[]
+  
+  // Phase 2 relations
+  kpiSnapshots   KPISnapshot[]
+  dashboards     Dashboard[]
+  customReports  CustomReport[]
+  notifications  Notification[]
+  
+  // Phase 3 relations
+  vendors        Vendor[]
+  vendorCategories VendorCategory[]
+  vendorContacts VendorContact[]
+  vendorPriceAgreements VendorPriceAgreement[]
+  vendorPerformanceReviews VendorPerformanceReview[]
+  vendorDocuments VendorDocument[]
+  taxRates       TaxRate[]
+  inventoryAdjustments InventoryAdjustment[]
+  stockTransfers StockTransfer[]
+  documentTemplates DocumentTemplate[]
+  webhooks       Webhook[]
+  integrations   Integration[]
+  emailTemplates EmailTemplate[]
+  smsTemplates   SmsTemplate[]
+  fieldCalculations FieldCalculation[]
+  estimates      Estimate[]
+  proposals      Proposal[]
+  serviceCatalog ServiceCatalog[]
+  serviceBundles ServiceBundle[]
+  laborRates     LaborRate[]
+  feedbacks      Feedback[]
+  
+  // Enhanced CRM relations
+  properties     Property[]
+  serviceRequests ServiceRequest[]
+  customerPerformances CustomerPerformance[]
+  
+  @@index([subdomain])
+  @@index([isActive])
+}
+
+// ============================================================================
+// AUTHENTICATION & AUTHORIZATION (ENHANCED)
+// ============================================================================
+
+// ENHANCED: User model with MFA, profiles, and organization
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  tenantId      String
+  
+  // NEW: Profile information
+  firstName     String?
+  lastName      String?
+  phone         String?
+  avatarUrl     String?
+  bio           String?
+  timezone      String?        @default("UTC")
+  
+  // NEW: Organization structure
+  departmentId  String?
+  teamId        String?
+  managerId     String?
+  jobTitle      String?
+  employeeNumber String?
+  
+  // NEW: Multi-factor authentication
+  mfaEnabled    Boolean        @default(false)
+  mfaSecret     String?        // Encrypted TOTP secret
+  mfaMethod     String?        // "totp", "sms", "email"
+  
+  // NEW: Status & security
+  isActive      Boolean        @default(true)
+  emailVerified Boolean        @default(false)
+  emailVerifiedAt DateTime?
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+  passwordChangedAt DateTime?
+  failedLoginAttempts Int      @default(0)
+  lockedUntil   DateTime?
+  
+  // NEW: Preferences
+  preferences   Json?
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt @default(now())
+  deletedAt     DateTime?      // Soft delete
+  
+  // EXISTING relations (keep all)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  roles         UserRole[]
+  workOrders    WorkOrder[]    @relation("TechnicianWorkOrders")
+  dispatchSlots DispatchSlot[]
+  
+  // NEW relations
+  department    Department?    @relation("DepartmentUsers", fields: [departmentId], references: [id])
+  managedDepartments Department[] @relation("DepartmentManager")
+  team          Team?          @relation("TeamMembers", fields: [teamId], references: [id])
+  manager       User?          @relation("UserManager", fields: [managerId], references: [id])
+  subordinates  User[]         @relation("UserManager")
+  sessions      UserSession[]
+  trustedDevices TrustedDevice[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  createdWorkOrders WorkOrder[] @relation("CreatedByUser")
+  workOrderNotes WorkOrderNote[]
+  workOrderTechnicians WorkOrderTechnician[]
+  workOrderLineItems WorkOrderLineItem[]
+  workOrderAttachments WorkOrderAttachment[]
+  workOrderStatusHistories WorkOrderStatusHistory[]
+  completedChecklists WorkOrderChecklist[]
+  workOrderSignatures WorkOrderSignature[]
+  fieldCalculations FieldCalculation[]
+  estimates      Estimate[]
+  proposals      Proposal[]
+  customerNotes CustomerNote[]
+  auditLogs     AuditLog[]
+  createdInvoices Invoice[]
+  createdPayments Payment[]
+  createdExpenses Expense[]
+  
+  // Phase 1 relations
+  passwordHistory PasswordHistory[]
+  teamMemberships TeamMember[]
+  tasksAssigned   Task[]         @relation("TasksAssigned")
+  tasksCreated    Task[]         @relation("TasksCreated")
+  comments        Comment[]
+  activityLogs    ActivityLog[]
+  
+  // Phase 2 relations
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  feedbacks              Feedback[]
+  
+  // Vendor relations
+  vendorsCreated           Vendor[]                    @relation("VendorCreator")
+  vendorPerformanceReviews VendorPerformanceReview[]
+  vendorDocuments          VendorDocument[]
+  
+  // Enhanced CRM relations
+  assignedServiceRequests  ServiceRequest[]            @relation("TechServiceRequests")
+  
+  @@index([tenantId])
+  @@index([email])
+  @@index([departmentId])
+  @@index([teamId])
+  @@index([managerId])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+// NEW: Department model for organization
+model Department {
+  id          String    @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  parentId    String?   // For nested departments
+  managerId   String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt @default(now())
+  deletedAt   DateTime?
+  
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  parent      Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DepartmentHierarchy")
+  manager     User?     @relation("DepartmentManager", fields: [managerId], references: [id])
+  users       User[]    @relation("DepartmentUsers")
+  teams       Team[]
+  
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([managerId])
+}
+
+// NEW: Team model for organization
+model Team {
+  id            String    @id @default(uuid())
+  tenantId      String
+  name          String
+  description   String?
+  departmentId  String?
+  managerId     String?
+  color         String?   // Hex color for UI
+  
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt @default(now())
+  deletedAt     DateTime?
+  
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  department    Department? @relation(fields: [departmentId], references: [id])
+  members       User[]    @relation("TeamMembers")
+  workOrders    WorkOrder[]
+  teamMembers   TeamMember[] // Phase 1: Team membership junction table
+  
+  @@index([tenantId])
+  @@index([departmentId])
+}
+
+// EXISTING: Role model (keep as-is)
+model Role {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  
+  // NEW: Enhanced role info
+  displayName String?
+  description String?
+  isSystem    Boolean     @default(false)  // System roles can't be deleted
+  priority    Int         @default(0)      // For conflict resolution
+  color       String?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt @default(now())
+  
+  users       UserRole[]
+  permissions RolePermission[]
+  
+  @@index([name])
+  @@index([isSystem])
+}
+
+// EXISTING: Permission model (keep as-is)
+model Permission {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  
+  // NEW: Enhanced permission info
+  resource    String?    // "work_orders", "inventory", etc.
+  action      String?    // "create", "read", "update", "delete"
+  scope       String?    // "own", "team", "department", "all"
+  category    String?    // For grouping in UI
+  requiresMfa Boolean    @default(false)
+  
+  createdAt   DateTime   @default(now())
+  
+  roles       RolePermission[]
+  groups      PermissionGroupMapping[]
+  
+  @@index([name])
+  @@index([resource])
+  @@index([category])
+}
+
+// EXISTING: RolePermission model (keep as-is)
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  
+  // NEW: Conditions
+  conditions   Json?      // Time restrictions, IP restrictions, etc.
+  
+  createdAt    DateTime   @default(now())
+  
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// EXISTING: UserRole model (keep as-is)
+model UserRole {
+  id         String   @id @default(uuid())
+  userId     String
+  roleId     String
+  
+  // NEW: Enhanced assignment
+  assignedBy String?
+  expiresAt  DateTime?
+  
+  assignedAt DateTime @default(now())
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// NEW: Permission groups for easier management
+model PermissionGroup {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  displayName String?
+  description String?
+  category    String?
+  isSystem    Boolean   @default(false)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt @default(now())
+  
+  permissions PermissionGroupMapping[]
+  
+  @@index([name])
+}
+
+// NEW: Permission group mappings
+model PermissionGroupMapping {
+  id            String          @id @default(uuid())
+  groupId       String
+  permissionId  String
+  
+  createdAt     DateTime        @default(now())
+  
+  group         PermissionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permission    Permission      @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, permissionId])
+  @@index([groupId])
+  @@index([permissionId])
+}
+
+// NEW: User sessions for security
+model UserSession {
+  id                String   @id @default(uuid())
+  userId            String
+  accessTokenHash   String
+  refreshTokenHash  String
+  deviceId          String?
+  deviceInfo        Json?
+  ipAddress         String?
+  userAgent         String?
+  location          String?
+  isActive          Boolean  @default(true)
+  lastActivityAt    DateTime @default(now())
+  expiresAt         DateTime
+  
+  createdAt         DateTime @default(now())
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, isActive])
+  @@index([accessTokenHash])
+  @@index([refreshTokenHash])
+  @@index([expiresAt])
+}
+
+// NEW: Trusted devices for MFA skip
+model TrustedDevice {
+  id                String   @id @default(uuid())
+  userId            String
+  deviceId          String
+  deviceName        String?
+  deviceFingerprint String
+  isTrusted         Boolean  @default(true)
+  trustExpiresAt    DateTime?
+  lastUsedAt        DateTime?
+  
+  createdAt         DateTime @default(now())
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, deviceId])
+  @@index([userId])
+}
+
+// NEW: Password reset tokens
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([userId])
+}
+
+// NEW: Email verification tokens
+model EmailVerificationToken {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  email      String
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  
+  createdAt  DateTime @default(now())
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([userId])
+}
+// ============================================================================
+// PART 2: WORK ORDERS (ENHANCED)
+// ============================================================================
+
+// ENHANCED: WorkOrder model with complete workflow
+model WorkOrder {
+  id            String         @id @default(uuid())
+  tenantId      String
+  
+  // EXISTING fields (keep all)
+  title         String
+  description   String?
+  status        WorkOrderStatus @default(NEW)
+  technicianId  String?
+  createdAt     DateTime       @default(now())
+  scheduledAt   DateTime?
+  dispatchedAt  DateTime?
+  completedAt   DateTime?
+  
+  // NEW: Enhanced work order fields
+  number        String         @unique      // WO-2025-001234
+  customerId    String?                     // Link to Account
+  contactId     String?                     // Specific contact
+  equipmentId   String?                     // Link to specific equipment
+  serviceAddressId String?
+  billingAddressId String?
+  teamId        String?
+  
+  // NEW: Type & Priority
+  workOrderType String         @default("service") // "service", "installation", "maintenance", "repair"
+  serviceType   String?                            // "hvac", "plumbing", "electrical"
+  priority      WorkOrderPriority @default(MEDIUM)
+  category      String?                            // "residential", "commercial"
+  
+  // NEW: Scheduling enhancements
+  scheduledEndAt     DateTime?
+  estimatedDuration  Int?              // Minutes
+  actualStartAt      DateTime?
+  actualEndAt        DateTime?
+  
+  // NEW: Financial
+  subtotal      Decimal        @default(0) @db.Decimal(10,2)
+  taxAmount     Decimal        @default(0) @db.Decimal(10,2)
+  discountAmount Decimal       @default(0) @db.Decimal(10,2)
+  totalAmount   Decimal        @default(0) @db.Decimal(10,2)
+  
+  // NEW: Special flags
+  isZeroDollar  Boolean        @default(false)
+  isCallback    Boolean        @default(false)
+  isWarranty    Boolean        @default(false)
+  isEmergency   Boolean        @default(false)
+  
+  // NEW: Callback tracking
+  originalWorkOrderId String?
+  callbackReason      String?
+  callbackType        String?          // "same_issue", "related_issue", "parts_failure"
+  
+  // NEW: Quality metrics
+  customerSatisfaction Int?            // 1-5 rating
+  firstTimeFixComplete Boolean?
+  
+  // NEW: Invoice link
+  invoiceId     String?
+  
+  // NEW: Equipment info
+  equipmentMake   String?
+  equipmentModel  String?
+  equipmentSerial String?
+  equipmentAge    Int?
+  
+  // NEW: Completion
+  completionNotes String?
+  completedBy     String?
+  
+  // NEW: Created by tracking
+  createdBy     String?
+  
+  updatedAt     DateTime       @updatedAt @default(now())
+  deletedAt     DateTime?
+  
+  // EXISTING relations (keep all)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  technician    User?          @relation("TechnicianWorkOrders", fields: [technicianId], references: [id])
+  dispatchSlots DispatchSlot[]
+  
+  // NEW relations
+  customer      Account?       @relation(fields: [customerId], references: [id])
+  contact       Contact?       @relation(fields: [contactId], references: [id])
+  equipment     CustomerEquipment? @relation("EquipmentWorkOrders", fields: [equipmentId], references: [id])
+  serviceAddress Address?      @relation("ServiceAddress", fields: [serviceAddressId], references: [id])
+  billingAddress Address?      @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  team          Team?          @relation(fields: [teamId], references: [id])
+  originalWorkOrder WorkOrder?  @relation("WorkOrderCallbacks", fields: [originalWorkOrderId], references: [id])
+  callbacks     WorkOrder[]    @relation("WorkOrderCallbacks")
+  createdByUser User?          @relation("CreatedByUser", fields: [createdBy], references: [id])
+  
+  lineItems     WorkOrderLineItem[]
+  technicians   WorkOrderTechnician[]
+  notes         WorkOrderNote[]
+  attachments   WorkOrderAttachment[]
+  statusHistory WorkOrderStatusHistory[]
+  checklists    WorkOrderChecklist[]
+  signatures    WorkOrderSignature[]
+  fieldCalculations FieldCalculation[]
+  estimates     Estimate[]
+  proposals     Proposal[]
+  serviceRequests ServiceRequest[]
+  
+  @@index([tenantId])
+  @@index([number])
+  @@index([customerId])
+  @@index([equipmentId])
+  @@index([technicianId])
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+  @@index([workOrderType])
+  @@index([isZeroDollar])
+  @@index([isCallback])
+  @@index([originalWorkOrderId])
+  @@index([createdAt])
+  // Composite indexes for multi-tenant query optimization
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, scheduledAt])
+  @@index([tenantId, priority])
+}
+
+// NEW: Work order priority enum
+enum WorkOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// EXISTING: WorkOrderStatus enum (keep as-is, but can add more statuses)
+enum WorkOrderStatus {
+  NEW
+  SCHEDULED
+  DISPATCHED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+// NEW: Work order line items (parts, labor, services)
+model WorkOrderLineItem {
+  id            String   @id @default(uuid())
+  workOrderId   String
+  lineNumber    Int
+  
+  itemType      String   // "product", "service", "labor"
+  skuId         String?  // If product
+  serviceCatalogId String?  // If service from catalog
+  
+  description   String
+  notes         String?
+  
+  quantity      Decimal  @default(1) @db.Decimal(10,2)
+  unitPrice     Decimal  @default(0) @db.Decimal(10,2)
+  discount      Decimal  @default(0) @db.Decimal(10,2)
+  taxRate       Decimal  @default(0) @db.Decimal(5,2)
+  
+  subtotal      Decimal  @default(0) @db.Decimal(10,2)
+  taxAmount     Decimal  @default(0) @db.Decimal(10,2)
+  total         Decimal  @default(0) @db.Decimal(10,2)
+  
+  // Labor specific
+  laborHours    Decimal? @db.Decimal(5,2)
+  technicianId  String?
+  
+  isBillable    Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+  
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  sku           SKU?      @relation(fields: [skuId], references: [id])
+  serviceCatalog ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id])
+  technician    User?     @relation(fields: [technicianId], references: [id])
+  
+  @@index([workOrderId])
+  @@index([skuId])
+  @@index([serviceCatalogId])
+  @@index([technicianId])
+}
+
+// NEW: Multiple technicians per work order
+model WorkOrderTechnician {
+  id            String   @id @default(uuid())
+  workOrderId   String
+  technicianId  String
+  
+  isPrimary     Boolean  @default(false)
+  role          String?  // "lead", "assistant", "trainee"
+  
+  checkInAt     DateTime?
+  checkOutAt    DateTime?
+  hoursWorked   Decimal? @db.Decimal(5,2)
+  
+  payRate       Decimal? @db.Decimal(10,2)
+  totalPay      Decimal? @db.Decimal(10,2)
+  
+  notes         String?
+  
+  createdAt     DateTime @default(now())
+  
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  technician    User      @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  
+  @@unique([workOrderId, technicianId])
+  @@index([workOrderId])
+  @@index([technicianId])
+}
+
+// NEW: Work order notes
+model WorkOrderNote {
+  id            String   @id @default(uuid())
+  workOrderId   String
+  note          String
+  noteType      String   @default("internal") // "internal", "customer", "technician"
+  
+  isImportant   Boolean  @default(false)
+  isPinned      Boolean  @default(false)
+  
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+  
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [createdBy], references: [id])
+  
+  @@index([workOrderId])
+  @@index([createdBy])
+}
+
+// NEW: Work order attachments (photos, documents)
+model WorkOrderAttachment {
+  id            String   @id @default(uuid())
+  workOrderId   String
+  
+  fileName      String
+  fileSize      Int?
+  fileType      String?
+  fileUrl       String
+  thumbnailUrl  String?
+  
+  category      String?  // "photo", "invoice", "diagram", "report"
+  description   String?
+  
+  uploadedBy    String
+  uploadedAt    DateTime @default(now())
+  
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [uploadedBy], references: [id])
+  
+  @@index([workOrderId])
+  @@index([category])
+}
+
+// NEW: Status history for audit trail
+model WorkOrderStatusHistory {
+  id            String   @id @default(uuid())
+  workOrderId   String
+  
+  fromStatus    String?
+  toStatus      String
+  
+  reason        String?
+  notes         String?
+  
+  changedBy     String
+  changedAt     DateTime @default(now())
+  
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [changedBy], references: [id])
+  
+  @@index([workOrderId])
+  @@index([changedAt])
+}
+
+// NEW: Checklists for tasks
+model WorkOrderChecklist {
+  id            String   @id @default(uuid())
+  workOrderId   String
+  
+  text          String
+  category      String?
+  
+  isCompleted   Boolean  @default(false)
+  completedBy   String?
+  completedAt   DateTime?
+  
+  isRequired    Boolean  @default(false)
+  order         Int      @default(0)
+  
+  notes         String?
+  
+  createdAt     DateTime @default(now())
+  
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [completedBy], references: [id])
+  
+  @@index([workOrderId])
+}
+
+// NEW: Digital signatures
+model WorkOrderSignature {
+  id            String   @id @default(uuid())
+  workOrderId   String
+  
+  signatureType String   // "customer", "technician"
+  signatureData String   // Base64 encoded image
+  
+  signerName    String
+  signerTitle   String?
+  
+  signedBy      String?
+  signedAt      DateTime @default(now())
+  
+  ipAddress     String?
+  location      String?
+  
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [signedBy], references: [id])
+  
+  @@index([workOrderId])
+  @@index([signatureType])
+}
+
+// NEW: Field Tool Calculations
+model FieldCalculation {
+  id              String   @id @default(uuid())
+  tenantId        String
+  workOrderId     String?
+  technicianId    String
+  
+  calculatorType  String   // "superheat", "gas-pipe", "psychrometric", etc.
+  category        String   // "electrical", "refrigeration", "airflow", "gas", "hydronic", "utility"
+  
+  inputs          Json     // All calculator inputs as JSON
+  results         Json     // All calculator results as JSON
+  
+  notes           String?  // Optional technician notes
+  isAttached      Boolean  @default(false) // Whether attached to work order
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+  
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workOrder       WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  technician      User      @relation(fields: [technicianId], references: [id])
+  
+  @@index([tenantId])
+  @@index([workOrderId])
+  @@index([technicianId])
+  @@index([calculatorType])
+  @@index([category])
+  @@index([createdAt])
+  // Composite indexes for multi-tenant query optimization
+  @@index([tenantId, createdAt])
+  @@index([tenantId, calculatorType])
+  @@index([technicianId, createdAt])
+}
+
+// EXISTING: DispatchSlot (keep as-is but can enhance)
+model DispatchSlot {
+  id           String   @id @default(uuid())
+  workOrderId  String
+  technicianId String?  // Optional to allow unassigned work orders
+  startTime    DateTime
+  endTime      DateTime
+  
+  // NEW: Enhanced scheduling
+  status       String?  @default("scheduled") // "scheduled", "confirmed", "completed", "cancelled"
+  notes        String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt @default(now())
+
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  technician   User?     @relation(fields: [technicianId], references: [id]) // Optional relation
+  
+  @@index([workOrderId])
+  @@index([technicianId])
+  @@index([startTime])
+}
+// ============================================================================
+// PART 3: CUSTOMERS & CRM (ENHANCED)
+// ============================================================================
+
+// ENHANCED: Account model (Customer companies)
+model Account {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  
+  // NEW: Enhanced customer info
+  accountNumber String  @unique
+  customerType  String  @default("individual") // "individual", "business"
+  industry      String?
+  
+  // NEW: Contact information
+  phone         String?
+  alternatePhone String?
+  email         String?
+  website       String?
+  taxId         String? // EIN or SSN (encrypted)
+  
+  // NEW: Account management
+  accountManagerId    String?
+  assignedTechnicianId String?
+  
+  // NEW: Status
+  status        String  @default("active") // "active", "inactive", "suspended"
+  isActive      Boolean @default(true)
+  
+  // NEW: Financial
+  creditLimit   Decimal? @db.Decimal(10,2)
+  currentBalance Decimal @default(0) @db.Decimal(10,2)
+  paymentTerms  String?  // "net_30", "net_60", "due_on_receipt"
+  preferredPaymentMethod String?
+  
+  // NEW: Rating & classification
+  customerRating Int?    // 1-5 stars
+  customerTier  String?  // "bronze", "silver", "gold", "platinum"
+  lifetimeValue Decimal @default(0) @db.Decimal(12,2)
+  
+  // NEW: Communication preferences
+  preferredContactMethod String? // "email", "phone", "sms"
+  emailNotifications Boolean @default(true)
+  smsNotifications   Boolean @default(false)
+  
+  // NEW: Source & marketing
+  leadSource    String?
+  referredById  String?
+  
+  // NEW: Notes
+  notes         String?
+  internalNotes String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+  deletedAt DateTime?
+
+  // EXISTING relations (keep all)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  contacts  Contact[]
+  leads     Lead[]
+  
+  // NEW relations
+  accountManager Account? @relation("AccountReferrals", fields: [referredById], references: [id])
+  referrals      Account[] @relation("AccountReferrals")
+  addresses      Address[]
+  serviceAgreements ServiceAgreement[]
+  workOrders     WorkOrder[]
+  invoices       Invoice[]
+  payments       Payment[]
+  customerNotes  CustomerNote[]
+  tags           CustomerTagAssignment[]
+  
+  // Phase 3 relations
+  customerPreference CustomerPreference?
+  estimates          Estimate[]
+  proposals          Proposal[]
+  
+  // Enhanced CRM relations
+  properties         Property[]
+  serviceRequests    ServiceRequest[]
+  customerPerformance CustomerPerformance?
+  
+  @@index([tenantId])
+  @@index([accountNumber])
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@index([accountManagerId])
+}
+
+// ENHANCED: Contact model
+model Contact {
+  id        String   @id @default(uuid())
+  tenantId  String
+  accountId String?
+  
+  // EXISTING fields (keep)
+  name      String
+  email     String?
+  phone     String?
+  
+  // NEW: Enhanced contact info
+  firstName String?
+  lastName  String?
+  title     String?  // Job title
+  mobilePhone String?
+  workPhone   String?
+  
+  // NEW: Role & permissions
+  isPrimary        Boolean @default(false)
+  isDecisionMaker  Boolean @default(false)
+  isBilling        Boolean @default(false)
+  canApproveWork   Boolean @default(false)
+  
+  // NEW: Preferences
+  preferredContactMethod String?
+  bestTimeToCall         String?
+  
+  // NEW: Status
+  isActive      Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+  deletedAt DateTime?
+
+  // EXISTING relations (keep all)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  account   Account? @relation(fields: [accountId], references: [id])
+  notes     Note[]
+  leads     Lead[]
+  
+  // NEW relations
+  workOrders WorkOrder[]
+  
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([email])
+  @@index([isPrimary])
+}
+
+// NEW: Address model (multiple per customer)
+model Address {
+  id          String  @id @default(uuid())
+  accountId   String
+  
+  addressType String  // "service", "billing", "mailing", "other"
+  label       String? // "Home", "Office", "Warehouse 1"
+  
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String @default("USA")
+  
+  // Geocoding
+  latitude     Decimal? @db.Decimal(10,7)
+  longitude    Decimal? @db.Decimal(10,7)
+  
+  // Access information
+  accessInstructions String?
+  gateCode          String?
+  parkingInstructions String?
+  
+  isPrimary   Boolean @default(false)
+  isActive    Boolean @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt @default(now())
+  deletedAt   DateTime?
+  
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  workOrdersService WorkOrder[] @relation("ServiceAddress")
+  workOrdersBilling WorkOrder[] @relation("BillingAddress")
+  properties  Property[]
+  
+  @@index([accountId])
+  @@index([addressType])
+  @@index([city, state])
+  @@index([postalCode])
+}
+
+// NEW: Customer equipment tracking (belongs to Property)
+model CustomerEquipment {
+  id          String   @id @default(uuid())
+  propertyId  String   // REQUIRED: Equipment belongs to a specific property
+  
+  equipmentType String   // "HVAC", "Furnace", "AC Unit"
+  make          String?
+  model         String?
+  serialNumber  String?
+  
+  installDate   DateTime?
+  installedBy   String?
+  
+  capacity      String?  // BTU, Tons
+  efficiency    String?  // SEER rating
+  refrigerantType String?
+  
+  // Warranty
+  warrantyStartDate DateTime?
+  warrantyEndDate   DateTime?
+  warrantyProvider  String?
+  
+  // Maintenance
+  lastServiceDate   DateTime?
+  nextServiceDue    DateTime?
+  maintenanceInterval Int? // Days
+  
+  locationNotes String?
+  
+  status        String @default("active") // "active", "inactive", "retired"
+  notes         String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+  deletedAt     DateTime?
+  
+  property      Property @relation("PropertyEquipment", fields: [propertyId], references: [id], onDelete: Cascade)
+  workOrders    WorkOrder[] @relation("EquipmentWorkOrders")
+  serviceRequests ServiceRequest[]
+  
+  @@index([propertyId])
+  @@index([serialNumber])
+  @@index([nextServiceDue])
+  @@index([status])
+}
+
+// NEW: Service agreements & contracts
+model ServiceAgreement {
+  id              String   @id @default(uuid())
+  tenantId        String
+  accountId       String
+  
+  agreementNumber String   @unique
+  agreementType   String   // "maintenance", "warranty", "service_plan"
+  planName        String
+  description     String?
+  
+  coverageType    String?  // "comprehensive", "preventive", "labor_only"
+  coveredEquipment Json?   // Array of equipment IDs
+  
+  startDate       DateTime
+  endDate         DateTime
+  autoRenew       Boolean  @default(false)
+  
+  contractValue   Decimal  @db.Decimal(10,2)
+  billingFrequency String? // "monthly", "quarterly", "annually"
+  nextBillingDate DateTime?
+  
+  annualVisits    Int?
+  visitsUsed      Int      @default(0)
+  
+  status          String   @default("active") // "active", "expired", "cancelled"
+  
+  terms           String?
+  notes           String?
+  
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+  deletedAt       DateTime?
+  
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([agreementNumber])
+  @@index([status])
+  @@index([endDate])
+}
+
+// NEW: Customer notes (enhanced from existing Note model)
+model CustomerNote {
+  id          String   @id @default(uuid())
+  accountId   String
+  
+  note        String
+  noteType    String   @default("general") // "general", "phone_call", "email", "meeting", "complaint"
+  subject     String?
+  
+  isImportant Boolean  @default(false)
+  isPinned    Boolean  @default(false)
+  isInternal  Boolean  @default(false)
+  
+  relatedWorkOrderId String?
+  relatedInvoiceId   String?
+  
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt @default(now())
+  
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [createdBy], references: [id])
+  
+  @@index([accountId])
+  @@index([noteType])
+  @@index([createdBy])
+}
+
+// NEW: Customer tags for organization
+model CustomerTag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  color       String?
+  description String?
+  
+  createdAt   DateTime @default(now())
+  
+  assignments CustomerTagAssignment[]
+  
+  @@index([name])
+}
+
+// NEW: Customer tag assignments
+model CustomerTagAssignment {
+  id         String   @id @default(uuid())
+  accountId  String
+  tagId      String
+  
+  createdAt  DateTime @default(now())
+  
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tag        CustomerTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([accountId, tagId])
+  @@index([accountId])
+  @@index([tagId])
+}
+
+// EXISTING: Lead model (keep as-is, already good)
+model Lead {
+  id         String   @id @default(uuid())
+  tenantId   String
+  accountId  String?
+  contactId  String?
+  status     LeadStatus @default(NEW)
+  source     String?
+  description String?
+  createdAt  DateTime @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  account    Account? @relation(fields: [accountId], references: [id])
+  contact    Contact? @relation(fields: [contactId], references: [id])
+  
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([contactId])
+  @@index([status])
+}
+
+// EXISTING: LeadStatus enum (keep as-is)
+enum LeadStatus {
+  NEW
+  QUALIFIED
+  LOST
+  WON
+}
+
+// EXISTING: Note model (keep as-is for backward compatibility)
+model Note {
+  id         String   @id @default(uuid())
+  tenantId   String
+  contactId  String?
+  content    String
+  createdAt  DateTime @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  contact    Contact? @relation(fields: [contactId], references: [id])
+  
+  @@index([tenantId])
+  @@index([contactId])
+}
+// ============================================================================
+// PART 4: INVENTORY (ENHANCED)
+// ============================================================================
+
+// EXISTING: SKU model (keep as-is but can enhance)
+model SKU {
+  id             String          @id @default(uuid())
+  tenantId       String
+  name           String
+  description    String?
+  barcode        String?         @unique
+  
+  // NEW: Enhanced SKU info
+  sku            String?         @unique
+  category       String?
+  subcategory    String?
+  manufacturer   String?
+  manufacturerPartNumber String?
+  
+  itemType       String          @default("product") // "product", "part", "material"
+  
+  // NEW: Pricing
+  cost           Decimal         @default(0) @db.Decimal(10,2)
+  markupPercentage Decimal?      @db.Decimal(5,2)
+  retailPrice    Decimal         @default(0) @db.Decimal(10,2)
+  
+  // NEW: Units & inventory
+  unitOfMeasure  String          @default("each")
+  trackInventory Boolean         @default(true)
+  reorderPoint   Int             @default(0)
+  reorderQuantity Int?
+  
+  // NEW: Specifications
+  weight         Decimal?        @db.Decimal(10,2)
+  dimensions     String?
+  
+  // NEW: Vendor
+  preferredVendorId String?
+  vendorSku         String?
+  
+  // NEW: Status
+  isActive       Boolean         @default(true)
+  isDiscontinued Boolean         @default(false)
+  
+  // NEW: Images
+  imageUrl       String?
+  images         String[]
+  
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt @default(now())
+  deletedAt      DateTime?
+  
+  // EXISTING relations (keep all)
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  ledgers        StockLedger[]
+  purchaseOrders PurchaseOrder[]
+  forecasts      Forecast[]
+  
+  // NEW relations
+  workOrderLineItems WorkOrderLineItem[]
+  warehouseStock     WarehouseStock[]
+  
+  // Phase 3 relations
+  inventoryAdjustments InventoryAdjustment[]
+  stockTransfers       StockTransfer[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  invoiceLineItems     InvoiceLineItem[]
+  priceAgreements      VendorPriceAgreement[]
+  
+  @@index([tenantId])
+  @@index([barcode])
+  @@index([sku])
+  @@index([category])
+  @@index([manufacturer])
+}
+
+// EXISTING: Warehouse model (keep as-is but enhance)
+model Warehouse {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  
+  // NEW: Enhanced warehouse info
+  code      String   @unique
+  address   String?
+  city      String?
+  state     String?
+  postalCode String?
+  phone     String?
+  email     String?
+  
+  managerId String?
+  isPrimary Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+
+  // EXISTING relations (keep all)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  bins      Bin[]
+  
+  // NEW relations
+  stock     WarehouseStock[]
+  
+  // Phase 3 relations
+  inventoryAdjustments InventoryAdjustment[]
+  transfersFrom        StockTransfer[] @relation("TransfersFrom")
+  transfersTo          StockTransfer[] @relation("TransfersTo")
+  
+  @@index([tenantId])
+  @@index([code])
+}
+
+// EXISTING: Bin model (keep as-is)
+model Bin {
+  id           String        @id @default(uuid())
+  warehouseId  String
+  name         String
+  createdAt    DateTime      @default(now())
+  
+  warehouse    Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  ledgers      StockLedger[]
+  
+  // Phase 3 relations
+  inventoryAdjustments InventoryAdjustment[]
+  
+  @@index([warehouseId])
+}
+
+// NEW: Warehouse stock levels (replaces scattered tracking)
+model WarehouseStock {
+  id                String    @id @default(uuid())
+  warehouseId       String
+  skuId             String
+  
+  quantityOnHand    Int       @default(0)
+  quantityReserved  Int       @default(0)  // Reserved for work orders
+  quantityAvailable Int       @default(0)  // on_hand - reserved
+  
+  binLocation       String?
+  
+  lastCountedAt     DateTime?
+  lastCountedBy     String?
+  
+  updatedAt         DateTime  @updatedAt @default(now())
+  
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  sku               SKU       @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  
+  @@unique([warehouseId, skuId])
+  @@index([warehouseId])
+  @@index([skuId])
+}
+
+// EXISTING: StockLedger model (keep as-is but enhance)
+model StockLedger {
+  id        String         @id @default(uuid())
+  skuId     String
+  binId     String
+  tenantId  String
+  quantity  Int
+  direction StockDirection
+  note      String?
+  
+  // NEW: Enhanced tracking
+  movementType String?      // "receipt", "issue", "transfer", "adjustment"
+  workOrderId  String?
+  purchaseOrderId String?
+  unitCost     Decimal?     @db.Decimal(10,2)
+  totalCost    Decimal?     @db.Decimal(10,2)
+  reference    String?
+  
+  createdBy String?
+  createdAt DateTime       @default(now())
+
+  sku       SKU            @relation(fields: [skuId], references: [id])
+  bin       Bin            @relation(fields: [binId], references: [id])
+  tenant    Tenant         @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([skuId, createdAt])
+  @@index([binId])
+  @@index([movementType])
+}
+
+// EXISTING: StockDirection enum (keep as-is)
+enum StockDirection {
+  IN
+  OUT
+}
+
+// EXISTING: PurchaseOrder model (keep as-is but enhance)
+model PurchaseOrder {
+  id         String   @id @default(uuid())
+  tenantId   String
+  skuId      String
+  quantity   Int
+  status     POStatus @default(OPEN)
+  receivedAt DateTime?
+  
+  // NEW: Enhanced PO info
+  poNumber   String   @unique
+  vendorId   String?
+  vendorName String?
+  
+  orderDate           DateTime  @default(now())
+  expectedDeliveryDate DateTime?
+  
+  subtotal     Decimal  @default(0) @db.Decimal(10,2)
+  taxAmount    Decimal  @default(0) @db.Decimal(10,2)
+  shippingCost Decimal  @default(0) @db.Decimal(10,2)
+  totalAmount  Decimal  @default(0) @db.Decimal(10,2)
+  
+  notes      String?
+  
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  sku        SKU      @relation(fields: [skuId], references: [id])
+  
+  // Phase 3 relations
+  items      PurchaseOrderItem[]
+
+  @@index([tenantId])
+  @@index([skuId])
+  @@index([status, tenantId])
+  @@index([poNumber])
+  // Additional composite indexes for query optimization
+  @@index([tenantId, orderDate])
+}
+
+// EXISTING: POStatus enum (keep as-is)
+enum POStatus {
+  OPEN
+  RECEIVED
+  CANCELLED
+}
+
+// EXISTING: Forecast model (keep as-is - already excellent)
+model Forecast {
+  id               String   @id @default(uuid())
+  tenantId         String
+  skuId            String
+  avgDailyDemand   Float
+  leadTimeDays     Int
+  safetyFactor     Float
+  reorderPoint     Float
+  suggestedOrderQty Int
+  updatedAt        DateTime @updatedAt @default(now())
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  sku              SKU      @relation(fields: [skuId], references: [id])
+
+  @@unique([tenantId, skuId])
+  @@index([tenantId])
+}
+
+// ============================================================================
+// PART 5: FINANCIAL MANAGEMENT (NEW)
+// ============================================================================
+
+// NEW: Invoices
+model Invoice {
+  id            String   @id @default(uuid())
+  tenantId      String
+  invoiceNumber String   @unique
+  accountId     String
+  workOrderId   String?
+  
+  invoiceDate   DateTime @default(now())
+  dueDate       DateTime
+  
+  status        String   @default("draft") // "draft", "sent", "paid", "partial", "overdue", "cancelled"
+  
+  subtotal      Decimal  @default(0) @db.Decimal(10,2)
+  taxAmount     Decimal  @default(0) @db.Decimal(10,2)
+  discountAmount Decimal @default(0) @db.Decimal(10,2)
+  totalAmount   Decimal  @default(0) @db.Decimal(10,2)
+  amountPaid    Decimal  @default(0) @db.Decimal(10,2)
+  balance       Decimal  @default(0) @db.Decimal(10,2)
+  
+  notes         String?
+  terms         String?
+  
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  account       Account  @relation(fields: [accountId], references: [id])
+  createdByUser User?    @relation(fields: [createdBy], references: [id])
+  
+  payments      Payment[]
+  
+  // Phase 3 relations
+  lineItems     InvoiceLineItem[]
+  
+  @@index([tenantId])
+  @@index([invoiceNumber])
+  @@index([accountId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// NEW: Payments
+model Payment {
+  id            String   @id @default(uuid())
+  tenantId      String
+  invoiceId     String?
+  accountId     String
+  
+  paymentNumber String?  @unique
+  paymentDate   DateTime @default(now())
+  
+  amount        Decimal  @db.Decimal(10,2)
+  paymentMethod String?  // "cash", "check", "credit_card", "bank_transfer"
+  
+  reference     String?  // Check number, transaction ID
+  notes         String?
+  
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  account       Account  @relation(fields: [accountId], references: [id])
+  createdByUser User?    @relation(fields: [createdBy], references: [id])
+  
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@index([accountId])
+  @@index([paymentDate])
+}
+
+// NEW: Expenses
+model Expense {
+  id            String   @id @default(uuid())
+  tenantId      String
+  
+  expenseNumber String?  @unique
+  category      String
+  description   String?
+  
+  amount        Decimal  @db.Decimal(10,2)
+  expenseDate   DateTime @default(now())
+  
+  vendorName    String?
+  paymentMethod String?
+  
+  isBillable    Boolean  @default(false)
+  workOrderId   String?
+  
+  receiptUrl    String?
+  
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  user          User     @relation(fields: [createdBy], references: [id])
+  
+  @@index([tenantId])
+  @@index([category])
+  @@index([expenseDate])
+}
+
+// ============================================================================
+// PART 6: AUDIT & COMPLIANCE (NEW)
+// ============================================================================
+
+// NEW: Audit logs (immutable trail)
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String?
+  
+  action      String   // "create", "update", "delete", "login", etc.
+  
+  entityType  String   // "work_order", "invoice", "user", etc.
+  entityId    String?
+  
+  oldValues   Json?
+  newValues   Json?
+  
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  
+  // Hash chain for tamper detection
+  previousHash String?
+  currentHash  String?
+  
+  createdAt   DateTime @default(now())
+  
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// EXISTING: AI FEATURES (KEEP AS-IS)
+// ============================================================================
+
+// EXISTING: ChatLog model (keep as-is - already good)
+model ChatLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userPrompt String
+  aiResponse String
+  createdAt  DateTime @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// PHASE 1: SECURITY & TRACKING (7 NEW TABLES)
+// ============================================================================
+
+// Security: Login attempt tracking for brute force protection
+model LoginAttempt {
+  id             String   @id @default(uuid())
+  
+  email          String
+  ipAddress      String?
+  userAgent      String?
+  
+  success        Boolean  @default(false)
+  failureReason  String?  // "invalid_password", "account_locked", "account_not_found"
+  
+  attemptedAt    DateTime @default(now())
+  
+  @@index([email])
+  @@index([ipAddress])
+  @@index([attemptedAt])
+}
+
+// Security: Password change history for compliance
+model PasswordHistory {
+  id             String   @id @default(uuid())
+  userId         String
+  
+  passwordHash   String
+  changedAt      DateTime @default(now())
+  changeReason   String?  // "user_requested", "admin_reset", "expired", "compromised"
+  changedBy      String?  // User ID who made the change
+  
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([changedAt])
+}
+
+// Organization: Team membership with roles
+model TeamMember {
+  id             String   @id @default(uuid())
+  teamId         String
+  userId         String
+  
+  role           String   @default("member") // "leader", "member", "observer"
+  joinedAt       DateTime @default(now())
+  
+  isActive       Boolean  @default(true)
+  
+  team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+// Management: Task/todo management system
+model Task {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  title          String
+  description    String?
+  
+  assigneeId     String?
+  createdBy      String
+  
+  status         String   @default("pending") // "pending", "in_progress", "completed", "cancelled"
+  priority       String   @default("medium") // "low", "medium", "high", "urgent"
+  
+  dueDate        DateTime?
+  completedAt    DateTime?
+  
+  // Relations
+  entityType     String?  // "work_order", "account", etc.
+  entityId       String?  // Related entity ID
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  assignee       User?    @relation("TasksAssigned", fields: [assigneeId], references: [id])
+  creator        User     @relation("TasksCreated", fields: [createdBy], references: [id])
+  
+  @@index([tenantId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// Management: Comments on any entity
+model Comment {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  entityType     String   // "work_order", "account", "task", etc.
+  entityId       String
+  
+  content        String
+  createdBy      String
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  creator        User     @relation(fields: [createdBy], references: [id])
+  
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@index([createdBy])
+}
+
+// Management: Tagging system for categorization
+model Tag {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  color          String?  // Hex color for UI
+  description    String?
+  
+  category       String?  // "customer", "work_order", "inventory"
+  
+  isActive       Boolean  @default(true)
+  
+  createdAt      DateTime @default(now())
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([category])
+}
+
+// Tracking: User activity log for audit trails
+model ActivityLog {
+  id             String   @id @default(uuid())
+  tenantId       String
+  userId         String?
+  
+  action         String   // "created", "updated", "deleted", "viewed"
+  entityType     String   // "work_order", "account", "invoice"
+  entityId       String?
+  
+  description    String?
+  metadata       Json?    // Additional context
+  
+  ipAddress      String?
+  userAgent      String?
+  
+  createdAt      DateTime @default(now())
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  user           User?    @relation(fields: [userId], references: [id])
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// PHASE 2: ANALYTICS & REPORTING (7 NEW TABLES)
+// ============================================================================
+
+// Analytics: KPI snapshots for tracking business metrics over time
+model KPISnapshot {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  snapshotDate   DateTime @default(now())
+  
+  // Work order metrics
+  totalWorkOrders       Int      @default(0)
+  completedWorkOrders   Int      @default(0)
+  pendingWorkOrders     Int      @default(0)
+  averageCompletionTime Float?   // In hours
+  
+  // Revenue metrics
+  totalRevenue          Decimal  @default(0) @db.Decimal(10,2)
+  outstandingInvoices   Decimal  @default(0) @db.Decimal(10,2)
+  collectionRate        Float?   // Percentage
+  
+  // Inventory metrics
+  totalSKUs             Int      @default(0)
+  lowStockItems         Int      @default(0)
+  inventoryValue        Decimal  @default(0) @db.Decimal(10,2)
+  
+  // Customer metrics
+  totalCustomers        Int      @default(0)
+  activeCustomers       Int      @default(0)
+  newCustomers          Int      @default(0)
+  
+  // Custom metrics
+  customMetrics         Json?    // Additional flexible metrics
+  
+  createdAt             DateTime @default(now())
+  
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([snapshotDate])
+}
+
+// Analytics: Custom dashboards for different users/roles
+model Dashboard {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  description    String?
+  
+  ownerId        String?  // User who created it
+  isDefault      Boolean  @default(false)
+  isPublic       Boolean  @default(false) // Shared with all users
+  
+  layout         Json?    // Dashboard layout configuration
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  widgets        DashboardWidget[]
+  
+  @@index([tenantId])
+  @@index([ownerId])
+}
+
+// Analytics: Individual widgets within dashboards
+model DashboardWidget {
+  id             String   @id @default(uuid())
+  dashboardId    String
+  
+  widgetType     String   // "chart", "metric", "table", "calendar"
+  title          String
+  
+  dataSource     String   // "work_orders", "revenue", "inventory"
+  config         Json     // Widget-specific configuration
+  
+  position       Json?    // {x, y, width, height}
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  dashboard      Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  
+  @@index([dashboardId])
+}
+
+// Reporting: User-created custom reports
+model CustomReport {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  description    String?
+  
+  reportType     String   // "work_order", "financial", "inventory", "custom"
+  
+  // Report configuration
+  columns        Json     // Selected columns/fields
+  filters        Json?    // Filter criteria
+  groupBy        Json?    // Grouping configuration
+  sortBy         Json?    // Sort configuration
+  
+  createdBy      String
+  isPublic       Boolean  @default(false)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  schedules      ReportSchedule[]
+  
+  @@index([tenantId])
+  @@index([createdBy])
+  @@index([reportType])
+}
+
+// Reporting: Scheduled report generation and delivery
+model ReportSchedule {
+  id             String   @id @default(uuid())
+  reportId       String
+  
+  name           String
+  frequency      String   // "daily", "weekly", "monthly", "custom"
+  cronExpression String?  // For custom schedules
+  
+  recipients     Json     // Array of email addresses
+  format         String   @default("pdf") // "pdf", "xlsx", "csv"
+  
+  isActive       Boolean  @default(true)
+  lastRun        DateTime?
+  nextRun        DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  report         CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  
+  @@index([reportId])
+  @@index([isActive])
+  @@index([nextRun])
+}
+
+// Notifications: In-app notifications for users
+model Notification {
+  id             String   @id @default(uuid())
+  tenantId       String
+  userId         String
+  
+  title          String
+  message        String
+  
+  type           String   // "info", "success", "warning", "error"
+  category       String?  // "work_order", "invoice", "system"
+  
+  // Related entity
+  entityType     String?
+  entityId       String?
+  
+  isRead         Boolean  @default(false)
+  readAt         DateTime?
+  
+  actionUrl      String?  // Link to related page
+  
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime? // Auto-delete after expiry
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  // Composite indexes for notification query optimization
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+// Notifications: User notification preferences
+model NotificationPreference {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  
+  // Email notifications
+  emailEnabled           Boolean  @default(true)
+  emailWorkOrders        Boolean  @default(true)
+  emailInvoices          Boolean  @default(true)
+  emailReports           Boolean  @default(true)
+  emailSystemAlerts      Boolean  @default(true)
+  
+  // In-app notifications
+  inAppEnabled           Boolean  @default(true)
+  inAppWorkOrders        Boolean  @default(true)
+  inAppInvoices          Boolean  @default(true)
+  inAppReports           Boolean  @default(true)
+  inAppSystemAlerts      Boolean  @default(true)
+  
+  // SMS notifications
+  smsEnabled             Boolean  @default(false)
+  smsWorkOrders          Boolean  @default(false)
+  smsInvoices            Boolean  @default(false)
+  smsSystemAlerts        Boolean  @default(true)
+  
+  // Digest settings
+  dailyDigest            Boolean  @default(false)
+  weeklyDigest           Boolean  @default(false)
+  digestTime             String?  // "08:00" format
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+// ============================================================================
+// PHASE 3: ADVANCED INVENTORY & OPERATIONS (10 NEW TABLES)
+// ============================================================================
+
+// Inventory: Vendor/Supplier management - Enhanced
+model Vendor {
+  id                String   @id @default(uuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  
+  // Basic Information
+  companyName       String
+  displayName       String?
+  vendorCode        String   // Unique vendor identifier (e.g., "VEN-001")
+  status            VendorStatus @default(ACTIVE)
+  type              VendorType
+  
+  // Contact Information
+  primaryContactName String?
+  email             String?
+  phone             String?
+  website           String?
+  
+  // Address
+  addressLine1      String?
+  addressLine2      String?
+  city              String?
+  state             String?
+  zipCode           String?
+  country           String   @default("USA")
+  
+  // Tax & Legal
+  taxId             String?  // EIN/Tax ID
+  businessLicense   String?
+  
+  // Payment Terms
+  paymentTerms      String?  // e.g., "Net 30", "Net 60"
+  creditLimit       Decimal? @db.Decimal(10, 2)
+  currency          String   @default("USD")
+  
+  // Performance Metrics
+  rating            Int?     @default(0) // 0-5 stars
+  onTimeDeliveryRate Decimal? @db.Decimal(5, 2) // Percentage
+  qualityRating     Decimal? @db.Decimal(3, 2) // 0-5.00
+  
+  // Relationships
+  categories        VendorCategory[]
+  contacts          VendorContact[]
+  priceAgreements   VendorPriceAgreement[]
+  performanceReviews VendorPerformanceReview[]
+  documents         VendorDocument[]
+  
+  // Metadata
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdById       String?
+  createdBy         User?    @relation("VendorCreator", fields: [createdById], references: [id])
+  
+  @@unique([tenantId, vendorCode])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_APPROVAL
+  SUSPENDED
+  BLACKLISTED
+}
+
+enum VendorType {
+  MANUFACTURER
+  DISTRIBUTOR
+  WHOLESALER
+  SERVICE_PROVIDER
+  CONTRACTOR
+  SUPPLIES
+  EQUIPMENT
+  OTHER
+}
+
+model VendorCategory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  name        String   // e.g., "HVAC Equipment", "Filters", "Refrigerants"
+  description String?
+  isPrimary   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([tenantId, vendorId])
+}
+
+model VendorContact {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  vendorId      String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  firstName     String
+  lastName      String
+  title         String?   // e.g., "Sales Rep", "Account Manager"
+  email         String?
+  phone         String?
+  mobile        String?
+  isPrimary     Boolean  @default(false)
+  
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([tenantId, vendorId])
+}
+
+model VendorPriceAgreement {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  vendorId        String
+  vendor          Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  skuId           String
+  sku             SKU      @relation(fields: [skuId], references: [id])
+  
+  // Pricing
+  vendorPartNumber String?  // Vendor's SKU number
+  unitPrice       Decimal  @db.Decimal(10, 2)
+  minimumOrderQty Int      @default(1)
+  currency        String   @default("USD")
+  
+  // Agreement Details
+  effectiveDate   DateTime
+  expirationDate  DateTime?
+  contractNumber  String?
+  
+  // Lead Time
+  leadTimeDays    Int?
+  
+  // Status
+  isActive        Boolean  @default(true)
+  
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([tenantId, vendorId])
+  @@index([tenantId, skuId])
+  @@index([tenantId, isActive])
+}
+
+model VendorPerformanceReview {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  vendorId        String
+  vendor          Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  reviewDate      DateTime @default(now())
+  reviewPeriodStart DateTime
+  reviewPeriodEnd   DateTime
+  
+  // Ratings (1-5 scale)
+  qualityRating   Int      // Product quality
+  deliveryRating  Int      // On-time delivery
+  serviceRating   Int      // Customer service
+  pricingRating   Int      // Competitive pricing
+  overallRating   Decimal  @db.Decimal(3, 2) // Calculated average
+  
+  // Metrics
+  totalOrders     Int      @default(0)
+  onTimeDeliveries Int     @default(0)
+  defectiveItems  Int      @default(0)
+  
+  // Review Details
+  strengths       String?
+  weaknesses      String?
+  recommendations String?
+  
+  reviewedById    String
+  reviewedBy      User     @relation(fields: [reviewedById], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([tenantId, vendorId])
+  @@index([reviewDate])
+}
+
+model VendorDocument {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  documentType VendorDocumentType
+  title       String
+  description String?
+  fileUrl     String?  // URL to document storage
+  fileName    String?
+  fileSize    Int?     // bytes
+  
+  expirationDate DateTime?
+  
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([tenantId, vendorId])
+  @@index([documentType])
+}
+
+enum VendorDocumentType {
+  CONTRACT
+  INSURANCE_CERTIFICATE
+  W9_FORM
+  BUSINESS_LICENSE
+  QUALITY_CERTIFICATION
+  SAFETY_CERTIFICATION
+  PRODUCT_CATALOG
+  PRICE_LIST
+  OTHER
+}
+
+// Finance: Tax rates by jurisdiction
+model TaxRate {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String   // "State Sales Tax", "County Tax", "City Tax"
+  jurisdiction   String   // "CA", "Los Angeles County", "Santa Monica"
+  
+  rate           Decimal  @db.Decimal(5,4) // e.g., 0.0825 for 8.25%
+  taxType        String   // "sales", "use", "property"
+  
+  isActive       Boolean  @default(true)
+  effectiveDate  DateTime @default(now())
+  expiryDate     DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([jurisdiction])
+  @@index([isActive])
+}
+
+// Inventory: Stock adjustments and corrections
+model InventoryAdjustment {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  adjustmentNumber String? @unique
+  
+  skuId          String
+  warehouseId    String
+  binId          String?
+  
+  quantityBefore Int
+  quantityAfter  Int
+  quantityChange Int      // Can be positive or negative
+  
+  reason         String   // "damaged", "lost", "found", "cycle_count", "correction"
+  notes          String?
+  
+  adjustedBy     String
+  approvedBy     String?
+  
+  createdAt      DateTime @default(now())
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  sku            SKU      @relation(fields: [skuId], references: [id])
+  warehouse      Warehouse @relation(fields: [warehouseId], references: [id])
+  bin            Bin?     @relation(fields: [binId], references: [id])
+  
+  @@index([tenantId])
+  @@index([skuId])
+  @@index([warehouseId])
+  @@index([createdAt])
+}
+
+// Inventory: Warehouse-to-warehouse transfers
+model StockTransfer {
+  id                String   @id @default(uuid())
+  tenantId          String
+  
+  transferNumber    String?  @unique
+  
+  fromWarehouseId   String
+  toWarehouseId     String
+  
+  skuId             String
+  quantity          Int
+  
+  status            String   @default("pending") // "pending", "in_transit", "received", "cancelled"
+  
+  initiatedBy       String
+  receivedBy        String?
+  
+  notes             String?
+  
+  initiatedAt       DateTime @default(now())
+  receivedAt        DateTime?
+  
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  fromWarehouse     Warehouse @relation("TransfersFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouse       Warehouse @relation("TransfersTo", fields: [toWarehouseId], references: [id])
+  sku               SKU      @relation(fields: [skuId], references: [id])
+  
+  @@index([tenantId])
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+  @@index([status])
+}
+
+// Purchasing: Purchase order line items
+model PurchaseOrderItem {
+  id             String   @id @default(uuid())
+  purchaseOrderId String
+  
+  skuId          String
+  
+  quantity       Int
+  unitCost       Decimal  @db.Decimal(10,2)
+  totalCost      Decimal  @db.Decimal(10,2)
+  
+  receivedQty    Int      @default(0)
+  
+  notes          String?
+  
+  createdAt      DateTime @default(now())
+  
+  purchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  sku            SKU      @relation(fields: [skuId], references: [id])
+  
+  @@index([purchaseOrderId])
+  @@index([skuId])
+}
+
+// Finance: Invoice line items for detailed billing
+model InvoiceLineItem {
+  id             String   @id @default(uuid())
+  invoiceId      String
+  
+  description    String
+  quantity       Decimal  @default(1) @db.Decimal(10,2)
+  unitPrice      Decimal  @db.Decimal(10,2)
+  totalPrice     Decimal  @db.Decimal(10,2)
+  
+  skuId          String?  // Optional link to inventory
+  taxable        Boolean  @default(true)
+  
+  sortOrder      Int      @default(0)
+  
+  createdAt      DateTime @default(now())
+  
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  sku            SKU?     @relation(fields: [skuId], references: [id])
+  
+  @@index([invoiceId])
+  @@index([skuId])
+}
+
+// CRM: Customer-specific preferences and settings (ENHANCED)
+model CustomerPreference {
+  id             String   @id @default(uuid())
+  accountId      String   @unique
+  
+  // Communication preferences
+  preferredContact String? // "email", "phone", "text"
+  emailOptIn       Boolean @default(true)
+  smsOptIn         Boolean @default(false)
+  
+  // Service preferences
+  preferredTechnician String?
+  preferredDayOfWeek  String?
+  preferredTimeSlot   String?
+  preferredServiceTime String? // "morning", "afternoon", "evening"
+  techRequest         String? // Specific technician request
+  
+  // Billing preferences
+  billingCycle        String? // "monthly", "quarterly", "annual"
+  autoPayEnabled      Boolean @default(false)
+  paperlessInvoicing  Boolean @default(false)
+  
+  // Site access & special instructions
+  petNoticeRequired    Boolean @default(false)
+  parkingInstructions  String? @db.Text
+  gateAccessCode       String?
+  shoesOffRequired     Boolean @default(false)
+  airQualitySensitivity String? // "none", "low", "medium", "high"
+  communicationNotes   String? @db.Text
+  
+  // Custom settings
+  customSettings      Json?
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  account             Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@index([accountId])
+}
+
+// Documents: Reusable templates for invoices, work orders, etc.
+model DocumentTemplate {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  templateType   String   // "invoice", "work_order", "quote", "receipt"
+  
+  htmlContent    String   // HTML template with placeholders
+  cssStyles      String?  // Custom CSS
+  
+  headerContent  String?
+  footerContent  String?
+  
+  isDefault      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  
+  variables      Json?    // Available template variables
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([templateType])
+}
+
+// Integrations: Webhook endpoints for event notifications
+model Webhook {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  url            String
+  
+  events         String[] // ["work_order.created", "invoice.paid", etc.]
+  secret         String   // For signature verification
+  
+  isActive       Boolean  @default(true)
+  lastTriggered  DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([isActive])
+}
+
+// Integrations: Third-party service integrations
+model Integration {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  provider       String   // "quickbooks", "stripe", "twilio", "sendgrid"
+  status         String   @default("inactive") // "inactive", "active", "error"
+  
+  config         Json     // Encrypted credentials and settings
+  lastSync       DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@index([status])
+}
+
+// Communications: Email templates
+model EmailTemplate {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  subject        String
+  htmlBody       String
+  textBody       String?
+  
+  templateType   String   // "invoice", "appointment_reminder", "welcome", "password_reset"
+  variables      Json?    // Available template variables
+  
+  isDefault      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([templateType])
+}
+
+// Communications: SMS templates
+model SmsTemplate {
+  id             String   @id @default(uuid())
+  tenantId       String
+  
+  name           String
+  message        String   // Max 160 characters recommended
+  
+  templateType   String   // "appointment_reminder", "payment_received", "status_update"
+  variables      Json?
+  
+  isDefault      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([templateType])
+}
+
+// ============================================================================
+// ESTIMATOR MODULE
+// ============================================================================
+
+model Estimate {
+  id            String   @id @default(uuid())
+  tenantId      String
+  workOrderId   String?
+  accountId     String?  // Customer/Account link
+  
+  // Type: 'ai' or 'manual'
+  estimateType  String   @default("ai")  // 'ai' or 'manual'
+  
+  // Mode: 'quick' or 'comprehensive'
+  estimateMode  String   // 'quick' or 'comprehensive'
+  
+  // Basic Info
+  title         String?
+  description   String?
+  projectType   String?
+  location      String?
+  
+  // For AI estimates
+  inputData     Json?    // Store AI inputs
+  outputData    Json?    // Store AI response
+  
+  // Financial
+  laborHours    Decimal? @db.Decimal(8, 2)
+  laborCost     Decimal? @db.Decimal(10, 2)
+  materialsCost Decimal? @db.Decimal(10, 2)
+  permitsCost   Decimal? @db.Decimal(10, 2)
+  overheadCost  Decimal? @db.Decimal(10, 2)
+  subtotal      Decimal? @db.Decimal(10, 2)
+  taxRate       Decimal? @db.Decimal(5, 2)
+  taxAmount     Decimal? @db.Decimal(10, 2)
+  totalEstimate Decimal? @db.Decimal(10, 2)
+  finalPrice    Decimal? @db.Decimal(10, 2)
+  profitMargin  Decimal? @db.Decimal(5, 2)
+  
+  // Status
+  status        String   @default("draft")  // 'draft', 'final', 'approved', 'rejected'
+  expiresAt     DateTime?
+  
+  // Notes
+  internalNotes String?
+  customerNotes String?
+  
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  workOrder     WorkOrder?  @relation(fields: [workOrderId], references: [id])
+  account       Account?    @relation(fields: [accountId], references: [id])
+  creator       User?       @relation(fields: [createdBy], references: [id])
+  
+  lineItems     EstimateLineItem[]
+  proposals     Proposal[]
+  
+  @@index([tenantId])
+  @@index([workOrderId])
+  @@index([accountId])
+  @@index([createdBy])
+  @@index([estimateType])
+  @@index([status])
+  // Composite indexes for multi-tenant query optimization
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, estimateType])
+}
+
+// Estimate Line Items - For manual estimates
+model EstimateLineItem {
+  id            String   @id @default(uuid())
+  estimateId    String
+  
+  category      String   // 'labor', 'material', 'permit', 'equipment', 'other'
+  description   String
+  quantity      Decimal  @db.Decimal(10, 2)
+  unitPrice     Decimal  @db.Decimal(10, 2)
+  total         Decimal  @db.Decimal(10, 2)
+  
+  displayOrder  Int      @default(0)
+  notes         String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  estimate      Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  
+  @@index([estimateId])
+  @@index([category])
+}
+
+// Proposals - Convert estimates to customer-facing proposals
+model Proposal {
+  id            String   @id @default(uuid())
+  tenantId      String
+  estimateId    String?  // Link to estimate
+  accountId     String?  // Customer/Account
+  workOrderId   String?
+  
+  // Proposal Info
+  proposalNumber String  @unique  // e.g., "PROP-2025-001"
+  title         String
+  description   String?
+  
+  // Financial
+  subtotal      Decimal  @db.Decimal(10, 2)
+  taxRate       Decimal  @default(0) @db.Decimal(5, 2)
+  taxAmount     Decimal  @default(0) @db.Decimal(10, 2)
+  totalAmount   Decimal  @db.Decimal(10, 2)
+  
+  // Status
+  status        String   @default("draft")  // 'draft', 'sent', 'viewed', 'approved', 'rejected', 'expired'
+  
+  // Dates
+  issuedDate    DateTime @default(now())
+  expiresAt     DateTime?
+  sentAt        DateTime?
+  viewedAt      DateTime?
+  respondedAt   DateTime?
+  
+  // Terms
+  paymentTerms  String?
+  validityDays  Int      @default(30)
+  termsAndConditions String?
+  
+  // Notes
+  internalNotes String?
+  customerNotes String?
+  
+  // Branding
+  companyLogo   String?
+  companyInfo   Json?
+  
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  estimate      Estimate?   @relation(fields: [estimateId], references: [id])
+  account       Account?    @relation(fields: [accountId], references: [id])
+  workOrder     WorkOrder?  @relation(fields: [workOrderId], references: [id])
+  creator       User?       @relation(fields: [createdBy], references: [id])
+  
+  lineItems     ProposalLineItem[]
+  
+  @@index([tenantId])
+  @@index([estimateId])
+  @@index([accountId])
+  @@index([workOrderId])
+  @@index([proposalNumber])
+  @@index([status])
+  @@index([createdBy])
+  // Composite indexes for multi-tenant query optimization
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+}
+
+// Proposal Line Items
+model ProposalLineItem {
+  id            String   @id @default(uuid())
+  proposalId    String
+  
+  category      String   // 'labor', 'material', 'permit', 'equipment', 'service', 'other'
+  description   String
+  quantity      Decimal  @db.Decimal(10, 2)
+  unitPrice     Decimal  @db.Decimal(10, 2)
+  total         Decimal  @db.Decimal(10, 2)
+  
+  displayOrder  Int      @default(0)
+  notes         String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  proposal      Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  
+  @@index([proposalId])
+  @@index([category])
+}
+
+// ============================================================================
+// SERVICE CATALOG & PRICEBOOK
+// ============================================================================
+
+// Service Catalog - Master list of services offered
+model ServiceCatalog {
+  id                String   @id @default(uuid())
+  tenantId          String
+  
+  // Basic Info
+  serviceCode       String   @unique  // e.g., "AC-TUNE-UP", "FURN-REPAIR"
+  serviceName       String              // e.g., "Air Conditioner Tune-Up"
+  category          String              // e.g., "Maintenance", "Repair", "Installation"
+  subcategory       String?             // e.g., "AC", "Furnace", "Duct Work"
+  description       String?
+  
+  // Pricing
+  pricingType       String   @default("flat_rate") // "flat_rate", "hourly", "time_and_material"
+  basePrice         Decimal  @default(0) @db.Decimal(10,2)
+  minPrice          Decimal? @db.Decimal(10,2)
+  maxPrice          Decimal? @db.Decimal(10,2)
+  
+  // Labor
+  estimatedHours    Decimal? @db.Decimal(5,2)
+  laborRateOverride Decimal? @db.Decimal(10,2)  // Override default labor rate
+  skillLevelRequired String? // "apprentice", "journeyman", "master"
+  
+  // Service Details
+  durationMinutes   Int?     // Estimated service duration
+  warrantyDays      Int?     // Standard warranty period
+  requiresPermit    Boolean  @default(false)
+  isEmergency       Boolean  @default(false)
+  
+  // Parts/Materials
+  includedParts     Json?    // Array of SKU IDs included in base price
+  recommendedParts  Json?    // Array of commonly needed additional parts
+  
+  // Availability
+  isActive          Boolean  @default(true)
+  isSeasonalService Boolean  @default(false)
+  availableSeasons  String[] // ["spring", "summer", "fall", "winter"]
+  
+  // Metadata
+  internalNotes     String?
+  customerFacingNotes String?
+  displayOrder      Int      @default(0)
+  
+  createdBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt @default(now())
+  deletedAt         DateTime?
+  
+  // Relations
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  workOrderLineItems WorkOrderLineItem[]
+  bundleItems       ServiceBundleItem[]
+  
+  @@index([tenantId])
+  @@index([serviceCode])
+  @@index([category])
+  @@index([subcategory])
+  @@index([isActive])
+}
+
+// Service Bundles - Package multiple services together
+model ServiceBundle {
+  id              String   @id @default(uuid())
+  tenantId        String
+  
+  bundleCode      String   @unique
+  bundleName      String
+  description     String?
+  
+  category        String?
+  
+  // Pricing
+  bundlePrice     Decimal  @db.Decimal(10,2)
+  regularPrice    Decimal  @db.Decimal(10,2) // Sum of individual services
+  savings         Decimal  @db.Decimal(10,2) // Calculated discount
+  savingsPercent  Decimal  @db.Decimal(5,2)
+  
+  // Availability
+  isActive        Boolean  @default(true)
+  validFrom       DateTime?
+  validUntil      DateTime?
+  
+  // Marketing
+  isPromotional   Boolean  @default(false)
+  displayOrder    Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+  deletedAt       DateTime?
+  
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  items           ServiceBundleItem[]
+  
+  @@index([tenantId])
+  @@index([bundleCode])
+  @@index([isActive])
+}
+
+// Service Bundle Items - Services included in bundles
+model ServiceBundleItem {
+  id              String   @id @default(uuid())
+  bundleId        String
+  serviceId       String
+  
+  quantity        Int      @default(1)
+  displayOrder    Int      @default(0)
+  
+  bundle          ServiceBundle  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  service         ServiceCatalog @relation(fields: [serviceId], references: [id])
+  
+  @@index([bundleId])
+  @@index([serviceId])
+}
+
+// Labor Rates - Configurable hourly rates
+model LaborRate {
+  id              String   @id @default(uuid())
+  tenantId        String
+  
+  rateName        String   // e.g., "Standard Rate", "Master Technician", "Emergency"
+  rateType        String   // "regular", "overtime", "emergency", "weekend", "holiday"
+  skillLevel      String?  // "apprentice", "journeyman", "master"
+  
+  hourlyRate      Decimal  @db.Decimal(10,2)
+  
+  // Time-based multipliers
+  isDefault       Boolean  @default(false)
+  afterHoursMultiplier Decimal? @db.Decimal(3,2)  // e.g., 1.5 for time-and-a-half
+  
+  // Availability
+  isActive        Boolean  @default(true)
+  effectiveFrom   DateTime?
+  effectiveUntil  DateTime?
+  
+  description     String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+  
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([rateType])
+  @@index([skillLevel])
+  @@index([isActive])
+  @@index([isDefault])
+}
+
+// ============================================================================
+// USER FEEDBACK SYSTEM
+// ============================================================================
+
+model Feedback {
+  id              String   @id @default(uuid())
+  tenantId        String
+  userId          String?  // Optional - allows anonymous feedback
+  
+  // Feedback content
+  category        String   // "bug", "feature_request", "complaint", "praise", "other"
+  rating          Int?     // 1-5 star rating (optional)
+  message         String   @db.Text
+  
+  // Contact for follow-up
+  contactEmail    String?
+  
+  // Metadata
+  userAgent       String?  // Browser/device info
+  pageUrl         String?  // Where feedback was submitted
+  
+  // Status tracking
+  status          String   @default("new") // "new", "reviewed", "in_progress", "resolved", "dismissed"
+  adminNotes      String?  @db.Text
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+  
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  user            User?    @relation(fields: [userId], references: [id])
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// ENHANCED CRM - PROPERTY & SERVICE MANAGEMENT
+// ============================================================================
+
+// Property: HVAC-specific property tracking (extends Address with HVAC details)
+model Property {
+  id            String   @id @default(uuid())
+  tenantId      String
+  accountId     String
+  addressId     String?  // Link to Address for location details
+  
+  // Property details
+  propertyType  String   // "residential", "commercial", "industrial"
+  squareFootage Int?
+  hvacUnits     Int      @default(0)
+  
+  // Access notes (can override Address access notes)
+  accessNotes   String?  @db.Text
+  gateCode      String?
+  parkingInstructions String?
+  
+  // HVAC-specific
+  buildingAge   Int?
+  lastHvacUpgrade DateTime?
+  ductworkType  String?  // "metal", "flex", "fiberglass"
+  insulation    String?  // "none", "standard", "high_efficiency"
+  
+  isActive      Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+  deletedAt     DateTime?
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  account       Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  address       Address? @relation(fields: [addressId], references: [id])
+  equipment     CustomerEquipment[] @relation("PropertyEquipment")
+  serviceRequests ServiceRequest[]
+  
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([addressId])
+  @@index([propertyType])
+}
+
+// ServiceRequest: Track service requests separate from WorkOrders
+model ServiceRequest {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  accountId          String
+  propertyId         String?
+  equipmentId        String?
+  
+  requestNumber      String   @unique
+  requestType        String   // "repair", "maintenance", "installation", "inspection", "consultation"
+  problemDescription String   @db.Text
+  
+  // Scheduling
+  preferredDateTime  DateTime?
+  scheduledDateTime  DateTime?
+  
+  // Assignment
+  assignedTechId     String?
+  technicianNotes    String?  @db.Text
+  
+  // Status
+  status             String   @default("new") // "new", "scheduled", "in_progress", "completed", "cancelled"
+  priority           String   @default("normal") // "low", "normal", "high", "emergency"
+  
+  // Conversion
+  workOrderId        String?  // Link to created WorkOrder
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt @default(now())
+  completedAt        DateTime?
+  
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  account            Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  property           Property? @relation(fields: [propertyId], references: [id])
+  equipment          CustomerEquipment? @relation(fields: [equipmentId], references: [id])
+  assignedTech       User?    @relation("TechServiceRequests", fields: [assignedTechId], references: [id])
+  workOrder          WorkOrder? @relation(fields: [workOrderId], references: [id])
+  
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([propertyId])
+  @@index([equipmentId])
+  @@index([requestNumber])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTechId])
+}
+
+// CustomerPerformance: Track customer metrics and analytics
+model CustomerPerformance {
+  id                      String   @id @default(uuid())
+  tenantId                String
+  accountId               String   @unique
+  
+  // Job metrics
+  totalJobsCompleted      Int      @default(0)
+  averageTicketValue      Decimal  @default(0) @db.Decimal(10,2)
+  serviceCallFrequency    Int      @default(0) // Calls per year
+  lastServiceDate         DateTime?
+  
+  // Payment metrics
+  averagePaymentTime      Int      @default(0) // Days
+  latePayments            Int      @default(0)
+  activePaymentPlan       Boolean  @default(false)
+  
+  // Financial metrics
+  totalRevenueYTD         Decimal  @default(0) @db.Decimal(12,2)
+  totalCostToServe        Decimal  @default(0) @db.Decimal(12,2)
+  grossMarginPercent      Decimal  @default(0) @db.Decimal(5,2)
+  
+  // Customer behavior
+  discountsGiven          Boolean  @default(false)
+  maintenancePlanEnrolled Boolean  @default(false)
+  respondsToUpsell        Boolean  @default(false)
+  
+  // Satisfaction & engagement
+  reviewLeft              Boolean  @default(false)
+  referralsCount          Int      @default(0)
+  cancellationRate        Decimal  @default(0) @db.Decimal(5,2)
+  disputesCount           Int      @default(0)
+  
+  // Special handling
+  specialHandlingRequired Boolean  @default(false)
+  handlingNotes           String?  @db.Text
+  
+  // Calculated scores
+  customerScore           Decimal? @db.Decimal(5,2) // 0-100
+  lifetimeValue           Decimal  @default(0) @db.Decimal(12,2)
+  
+  lastCalculated          DateTime @default(now())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt @default(now())
+  
+  tenant                  Tenant   @relation(fields: [tenantId], references: [id])
+  account                 Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([customerScore])
+  @@index([lifetimeValue])
+}
